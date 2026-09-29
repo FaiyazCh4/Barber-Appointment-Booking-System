@@ -1,0 +1,8 @@
+# robots.txt for George Davis Hairdressing
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /manage
+Disallow: /api/
+
+Sitemap: https://georgedavishairdressing.co.uk/sitemap.xml

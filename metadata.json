@@ -1,0 +1,6 @@
+{
+  "name": "George Davis Hairdressing Bromsgrove",
+  "description": "Specialist salon in Bromsgrove for precision cutting, curly hair styling & non-surgical hair replacement systems. Bespoke colour & extensions. Book online.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
