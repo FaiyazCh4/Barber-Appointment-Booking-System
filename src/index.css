@@ -45,6 +45,121 @@
   background: #9B8058;
 }
 
+/* ==========================================================================
+   LIGHT THEME: Champagne Atelier & Warm Editorial Ivory
+   ========================================================================== */
+html.light-theme,
+body.light-theme {
+  --color-ivory: #1E1B16;
+  --color-charcoal: #FAF7F2;
+  --color-charcoal-deep: #F5EFEB;
+  --color-stone: #423B32;
+  --color-stone-dark: #6E6457;
+  --color-text-dark: #FFFFFF;
+  color-scheme: light;
+  background-color: #F8F5F0 !important;
+  color: #1E1B16 !important;
+}
+
+html.light-theme body {
+  background-color: #F8F5F0 !important;
+  color: #1E1B16 !important;
+}
+
+/* Background overrides in light theme */
+html.light-theme .bg-\[\#141414\],
+html.light-theme .bg-\[\#121212\],
+html.light-theme .bg-\[\#111111\],
+html.light-theme .bg-\[\#0F0E0C\],
+html.light-theme .bg-\[\#0e0d0b\] {
+  background-color: #F8F5F0 !important;
+  color: #1E1B16 !important;
+}
+
+html.light-theme .bg-\[\#161513\],
+html.light-theme .bg-\[\#181818\],
+html.light-theme .bg-\[\#191919\],
+html.light-theme .bg-\[\#1A1916\],
+html.light-theme .bg-\[\#1C1A17\],
+html.light-theme .bg-\[\#1F1D1A\] {
+  background-color: #FFFFFF !important;
+  color: #1E1B16 !important;
+}
+
+html.light-theme .bg-\[\#222\],
+html.light-theme .bg-\[\#24211D\],
+html.light-theme .bg-\[\#262420\],
+html.light-theme .bg-\[\#201D18\],
+html.light-theme .bg-\[\#2A241C\] {
+  background-color: #F1ECE4 !important;
+  color: #1E1B16 !important;
+}
+
+/* Text overrides in light theme */
+html.light-theme .text-\[\#F5F1EA\] {
+  color: #1A1713 !important;
+}
+
+html.light-theme .text-\[\#D9D1C5\] {
+  color: #383127 !important;
+}
+
+html.light-theme .text-\[\#A69B8D\],
+html.light-theme .text-\[\#8C8273\] {
+  color: #635849 !important;
+}
+
+/* Border overrides in light theme */
+html.light-theme .border-\[\#262626\],
+html.light-theme .border-\[\#2A251D\],
+html.light-theme .border-\[\#2B2925\],
+html.light-theme .border-\[\#282622\],
+html.light-theme .border-\[\#332C22\],
+html.light-theme .border-\[\#3E382E\],
+html.light-theme .border-\[\#3A352F\],
+html.light-theme .border-\[\#2F2922\],
+html.light-theme .border-\[\#262420\],
+html.light-theme .border-\[\#222\],
+html.light-theme .border-\[\#333\] {
+  border-color: #E2DBD0 !important;
+}
+
+/* Header & Footer in light theme */
+html.light-theme header {
+  background-color: rgba(248, 245, 240, 0.95) !important;
+  border-bottom-color: #E0D8CB !important;
+}
+
+html.light-theme footer {
+  background-color: #EDE8DF !important;
+  border-top-color: #DFD7CA !important;
+}
+
+/* Table rows in light theme */
+html.light-theme tr.hover\:bg-\[\#1A1A1A\]:hover,
+html.light-theme tr.hover\:bg-\[\#1C1C1C\]:hover {
+  background-color: #F4EFE6 !important;
+}
+
+/* Inputs in light theme */
+html.light-theme input,
+html.light-theme select,
+html.light-theme textarea {
+  background-color: #FFFFFF !important;
+  color: #1E1B16 !important;
+  border-color: #D6CEC1 !important;
+}
+
+/* Warm Atelier Ambiance Lighting Mode */
+body.ambiance-warm-gold {
+  --color-charcoal-deep: #0e0d0b;
+  background: radial-gradient(circle at 50% 0%, #221b13 0%, #12100d 50%, #0a0908 100%);
+  background-attachment: fixed;
+}
+body.ambiance-warm-gold header {
+  border-bottom-color: #3b3327 !important;
+}
+
 @keyframes marquee {
   0% {
     transform: translateX(0%);

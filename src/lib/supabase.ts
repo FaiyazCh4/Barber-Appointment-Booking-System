@@ -5,9 +5,21 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
  * Connected to project: trdmxjurfvzhjeqmaoir
  * API URL: https://trdmxjurfvzhjeqmaoir.supabase.co
  */
-const SUPABASE_URL =
-  (import.meta as any).env?.VITE_SUPABASE_URL ||
-  'https://trdmxjurfvzhjeqmaoir.supabase.co';
+function normalizeClientSupabaseUrl(rawUrl?: string): string {
+  const defaultUrl = 'https://trdmxjurfvzhjeqmaoir.supabase.co';
+  if (!rawUrl) return defaultUrl;
+  const trimmed = rawUrl.trim();
+  if (trimmed.includes('supabase.com/dashboard/project/')) {
+    const match = trimmed.match(/project\/([a-z0-9_-]+)/i);
+    const pid = match ? match[1] : 'trdmxjurfvzhjeqmaoir';
+    return `https://${pid}.supabase.co`;
+  }
+  return trimmed;
+}
+
+const SUPABASE_URL = normalizeClientSupabaseUrl(
+  (import.meta as any).env?.VITE_SUPABASE_URL
+);
 
 const SUPABASE_ANON_KEY =
   (import.meta as any).env?.VITE_SUPABASE_ANON_KEY ||

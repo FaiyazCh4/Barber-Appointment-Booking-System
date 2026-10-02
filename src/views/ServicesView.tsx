@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Clock, ArrowRight, ShieldAlert, Tag, Check, Eye, EyeOff, X, Sparkles } from 'lucide-react';
+import { Search, Clock, ArrowRight, ShieldAlert, Tag, Check, Eye, EyeOff, X, Sparkles, LayoutGrid, List } from 'lucide-react';
 import type { Service, ServiceCategory } from '../types';
 
 interface Props {
@@ -46,6 +46,7 @@ export const ServicesView: React.FC<Props> = ({ categories, services, onBookServ
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showPriceList, setShowPriceList] = useState<boolean>(true);
+  const [layoutMode, setLayoutMode] = useState<'grid' | 'list'>('grid');
 
   // Category mapping for category-name based search filtering
   const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
@@ -164,6 +165,34 @@ export const ServicesView: React.FC<Props> = ({ categories, services, onBookServ
                 <span className="hidden sm:inline">Prices</span>
               </button>
             </div>
+
+            {/* Layout Mode Toggle Control (Grid vs List) */}
+            <div className="inline-flex items-center bg-[#11100E] rounded p-0.5 border border-[#2F2922]">
+              <button
+                type="button"
+                onClick={() => setLayoutMode('grid')}
+                className={`p-1.5 rounded transition-all cursor-pointer ${
+                  layoutMode === 'grid'
+                    ? 'bg-[#9B8058] text-[#141414] shadow-xs'
+                    : 'text-[#8C8273] hover:text-[#D9D1C5]'
+                }`}
+                title="Grid Cards View"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setLayoutMode('list')}
+                className={`p-1.5 rounded transition-all cursor-pointer ${
+                  layoutMode === 'list'
+                    ? 'bg-[#9B8058] text-[#141414] shadow-xs'
+                    : 'text-[#8C8273] hover:text-[#D9D1C5]'
+                }`}
+                title="Salon Menu List View"
+              >
+                <List className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -248,7 +277,7 @@ export const ServicesView: React.FC<Props> = ({ categories, services, onBookServ
         </div>
       )}
 
-      {/* Services Grid */}
+      {/* Services Grid or List */}
       {filteredServices.length === 0 ? (
         <div className="text-center py-16 px-4 bg-[#161513] border border-[#2A251D] rounded-sm space-y-4 max-w-xl mx-auto">
           <div className="w-12 h-12 rounded-full bg-[#201D18] border border-[#3A3326] text-[#BFA57D] flex items-center justify-center mx-auto">
@@ -269,6 +298,62 @@ export const ServicesView: React.FC<Props> = ({ categories, services, onBookServ
           >
             Clear Search & View All Services
           </button>
+        </div>
+      ) : layoutMode === 'list' ? (
+        <div className="bg-[#181818] border border-[#2B2925] rounded-sm divide-y divide-[#262420]">
+          {filteredServices.map((service) => {
+            const pricing = getPriceRangeDetails(service);
+            return (
+              <div
+                key={service.id}
+                className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-[#1E1C19] transition-colors group"
+              >
+                <div className="space-y-1.5 flex-1 min-w-0 pr-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-serif-heading text-xl text-[#F5F1EA] group-hover:text-[#BFA57D] transition-colors">
+                      {service.name}
+                    </h3>
+                    <span className="text-[10px] text-[#8C8273] px-2 py-0.5 rounded bg-[#121110] border border-[#2B2620]">
+                      {service.category_name}
+                    </span>
+                    {service.requires_patch_test && (
+                      <span className="text-[10px] text-[#BFA57D] font-medium bg-[#2C241B] px-2 py-0.5 rounded-xs">
+                        48h Patch Test
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#A69B8D] leading-relaxed line-clamp-2 max-w-3xl">
+                    {service.description}
+                  </p>
+                  <div className="text-[11px] text-[#8C8273] flex items-center gap-2 pt-0.5">
+                    <Clock className="w-3 h-3 text-[#BFA57D]" />
+                    <span>{service.duration_minutes} minutes duration</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 shrink-0 sm:self-center justify-between sm:justify-end border-t sm:border-t-0 pt-3 sm:pt-0 border-[#242424]">
+                  {showPriceList && (
+                    <div className="text-right">
+                      <span className="text-lg sm:text-xl font-serif-heading text-[#F5F1EA] font-mono-numbers block">
+                        {pricing.rangeText}
+                      </span>
+                      <span className="text-[10px] text-[#8C8273] block">
+                        {pricing.typeLabel}
+                      </span>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => onBookService(service.id)}
+                    className="bg-[#9B8058] hover:bg-[#856C47] text-[#141414] font-semibold text-xs uppercase tracking-wider px-4 py-2 rounded-sm transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  >
+                    <span>Book</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

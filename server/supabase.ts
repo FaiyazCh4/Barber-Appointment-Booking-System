@@ -13,9 +13,24 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { env } from '../src/config/env.js';
 
-const SUPABASE_URL = env.SUPABASE_URL || 'https://trdmxjurfvzhjeqmaoir.supabase.co';
-const SUPABASE_ANON_KEY = env.SUPABASE_ANON_KEY || 'sb_publishable_fj0say5boQ4hd_TTkHQUCw_2jf1Ww6Y';
+function normalizeSupabaseUrl(url?: string, projectId?: string): string {
+  const defaultUrl = `https://${projectId || 'trdmxjurfvzhjeqmaoir'}.supabase.co`;
+  if (!url) return defaultUrl;
+  const trimmed = url.trim();
+  if (trimmed.includes('supabase.com/dashboard/project/')) {
+    const match = trimmed.match(/project\/([a-z0-9_-]+)/i);
+    const pid = match ? match[1] : (projectId || 'trdmxjurfvzhjeqmaoir');
+    return `https://${pid}.supabase.co`;
+  }
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+    return `https://${trimmed}`;
+  }
+  return trimmed;
+}
+
 const SUPABASE_PROJECT_ID = env.SUPABASE_PROJECT_ID || 'trdmxjurfvzhjeqmaoir';
+const SUPABASE_URL = normalizeSupabaseUrl(env.SUPABASE_URL, SUPABASE_PROJECT_ID);
+const SUPABASE_ANON_KEY = env.SUPABASE_ANON_KEY || 'sb_publishable_fj0say5boQ4hd_TTkHQUCw_2jf1Ww6Y';
 
 let supabaseInstance: SupabaseClient | null = null;
 

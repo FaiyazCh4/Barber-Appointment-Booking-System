@@ -34,6 +34,9 @@ import {
   X,
   ChevronDown,
   ChevronUp,
+  PanelLeftClose,
+  PanelLeftOpen,
+  SlidersHorizontal,
 } from 'lucide-react';
 import {
   loginUser,
@@ -71,6 +74,9 @@ export const AdminView: React.FC<Props> = ({
   // Tabs: appointments (default), overview, services, staff, hours, saloniq, notifications, audit, qatest, supabase
   const [activeTab, setActiveTab] = useState<string>('appointments');
   const [sidebarExpandedMobile, setSidebarExpandedMobile] = useState<boolean>(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
+  const [compactDensity, setCompactDensity] = useState<boolean>(false);
+  const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
 
   // Single Slot & Auth Mode State
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
@@ -318,6 +324,16 @@ export const AdminView: React.FC<Props> = ({
       setAuthLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!autoRefresh || !user) return;
+    const timer = setInterval(() => {
+      onRefreshData();
+      if (activeTab === 'appointments') loadAppointments();
+      if (activeTab === 'overview') loadOverview();
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [autoRefresh, user, activeTab]);
 
   const handleLogout = async () => {
     try {
@@ -1047,7 +1063,7 @@ export const AdminView: React.FC<Props> = ({
   return (
     <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Top Banner & User Lockup */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#262626] pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#262626] pb-6">
         <div>
           <span className="text-[11px] uppercase tracking-wider text-[#BFA57D] font-semibold">
             Administrative Management
@@ -1057,8 +1073,50 @@ export const AdminView: React.FC<Props> = ({
           </h1>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="text-right text-xs">
+        {/* Operations Hub Controls & Toggle Buttons */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Toggle Sidebar Button */}
+          <button
+            type="button"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#1C1A17] hover:bg-[#27231E] border border-[#3E382E] hover:border-[#9B8058] text-xs text-[#D9D1C5] hover:text-[#F5F1EA] rounded-sm transition-all cursor-pointer shadow-sm"
+            title={sidebarCollapsed ? 'Expand operations sidebar to full menu' : 'Collapse operations sidebar to compact icon rail'}
+          >
+            {sidebarCollapsed ? (
+              <PanelLeftOpen className="w-3.5 h-3.5 text-[#BFA57D]" />
+            ) : (
+              <PanelLeftClose className="w-3.5 h-3.5 text-[#BFA57D]" />
+            )}
+            <span>Sidebar: {sidebarCollapsed ? 'Compact' : 'Expanded'}</span>
+          </button>
+
+          {/* Toggle Table Density Button */}
+          <button
+            type="button"
+            onClick={() => setCompactDensity(!compactDensity)}
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#1C1A17] hover:bg-[#27231E] border border-[#3E382E] hover:border-[#9B8058] text-xs text-[#D9D1C5] hover:text-[#F5F1EA] rounded-sm transition-all cursor-pointer shadow-sm"
+            title="Toggle between comfortable and compact table/grid density"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 text-[#BFA57D]" />
+            <span className="hidden sm:inline">Density:</span> {compactDensity ? 'Compact' : 'Comfortable'}
+          </button>
+
+          {/* Live Sync Auto-Refresh Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-sm border text-xs font-medium transition-all cursor-pointer shadow-sm ${
+              autoRefresh
+                ? 'bg-[#18231C] border-emerald-800 text-emerald-300'
+                : 'bg-[#1C1A17] border-[#3E382E] text-[#8C8273]'
+            }`}
+            title="Toggle automatic 60-second live background synchronization"
+          >
+            <span className={`w-2 h-2 rounded-full ${autoRefresh ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
+            <span>Live Sync: {autoRefresh ? 'ON' : 'OFF'}</span>
+          </button>
+
+          <div className="text-right text-xs pl-2 border-l border-[#2E2E2E] hidden sm:block">
             <span className="text-[#F5F1EA] font-medium block">{user.full_name}</span>
             <span className="text-[#8C8273] uppercase text-[10px]">Role: {user.role}</span>
           </div>
@@ -1110,24 +1168,50 @@ export const AdminView: React.FC<Props> = ({
       )}
 
       {/* Main Admin Operations Layout: Vertical Sidebar on Left + Active Content Panel on Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+      <div className="flex flex-col md:flex-row gap-6 lg:gap-8 items-start">
         {/* Left Column: Vertical Operations Hub Sidebar */}
-        <aside className="lg:col-span-3 xl:col-span-3 lg:sticky lg:top-6 space-y-4">
+        <aside
+          className={`${
+            sidebarCollapsed ? 'w-full md:w-20' : 'w-full md:w-64 lg:w-72'
+          } shrink-0 md:sticky md:top-6 space-y-4 transition-all duration-300`}
+        >
           <nav aria-label="Salon Operations Hub" className="bg-[#181818] border border-[#2B2925] rounded-sm p-3.5 space-y-2 shadow-xl">
-            {/* Header / Mobile Toggle */}
+            {/* Header / Mobile & Desktop Toggle */}
             <div className="flex items-center justify-between pb-2.5 border-b border-[#262626]">
-              <div>
-                <span className="text-[10px] uppercase tracking-wider text-[#8C8273] font-semibold block">
-                  Operations Navigation
-                </span>
-                <span className="text-xs font-serif-heading text-[#F5F1EA]">
-                  Operations Hub
-                </span>
-              </div>
+              {!sidebarCollapsed ? (
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider text-[#8C8273] font-semibold block">
+                    Operations Navigation
+                  </span>
+                  <span className="text-xs font-serif-heading text-[#F5F1EA]">
+                    Operations Hub
+                  </span>
+                </div>
+              ) : (
+                <div className="mx-auto">
+                  <span className="text-[10px] font-mono font-bold text-[#BFA57D]">HUB</span>
+                </div>
+              )}
+
+              {/* Desktop / Tablet Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="hidden md:flex items-center justify-center p-1.5 text-[#BFA57D] hover:text-[#F5F1EA] bg-[#222] hover:bg-[#2B2824] rounded-sm border border-[#3E382E] transition-colors cursor-pointer"
+                title={sidebarCollapsed ? 'Expand sidebar to full menu' : 'Collapse sidebar to compact icon rail'}
+              >
+                {sidebarCollapsed ? (
+                  <PanelLeftOpen className="w-4 h-4" />
+                ) : (
+                  <PanelLeftClose className="w-4 h-4" />
+                )}
+              </button>
+
+              {/* Mobile Toggle Button */}
               <button
                 type="button"
                 onClick={() => setSidebarExpandedMobile(!sidebarExpandedMobile)}
-                className="lg:hidden p-1.5 text-[#BFA57D] hover:text-white bg-[#222] rounded-xs border border-[#333] flex items-center gap-1 text-[11px] cursor-pointer"
+                className="md:hidden p-1.5 text-[#BFA57D] hover:text-white bg-[#222] rounded-xs border border-[#333] flex items-center gap-1 text-[11px] cursor-pointer"
               >
                 <span>{sidebarExpandedMobile ? 'Hide Menu' : 'Menu Options'}</span>
                 {sidebarExpandedMobile ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -1135,7 +1219,7 @@ export const AdminView: React.FC<Props> = ({
             </div>
 
             {/* Vertical Options List */}
-            <div className={`space-y-1 ${sidebarExpandedMobile ? 'block' : 'hidden lg:block'}`}>
+            <div className={`space-y-1 ${sidebarExpandedMobile ? 'block' : 'hidden md:block'}`}>
               {[
                 {
                   id: 'appointments',
@@ -1177,22 +1261,25 @@ export const AdminView: React.FC<Props> = ({
                       setActiveTab(tab.id);
                       setSidebarExpandedMobile(false);
                     }}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 text-xs font-medium rounded-sm transition-all text-left cursor-pointer group ${
+                    title={tab.label + (tab.badge ? ` (${tab.badge})` : '')}
+                    className={`w-full flex items-center ${
+                      sidebarCollapsed ? 'justify-center py-3' : 'justify-between px-3 py-2.5'
+                    } text-xs font-medium rounded-sm transition-all text-left cursor-pointer group relative ${
                       isActive
                         ? 'bg-[#9B8058] text-[#141414] font-bold shadow-xs'
                         : 'text-[#D9D1C5] hover:text-white hover:bg-[#222]'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0 pr-1">
+                    <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-2.5 min-w-0 pr-1'}`}>
                       <Icon
                         className={`w-4 h-4 shrink-0 transition-transform ${
                           isActive ? 'text-[#141414]' : 'text-[#BFA57D] group-hover:scale-110'
                         }`}
                       />
-                      <span className="truncate">{tab.label}</span>
+                      {!sidebarCollapsed && <span className="truncate">{tab.label}</span>}
                     </div>
 
-                    {tab.badge && (
+                    {!sidebarCollapsed && tab.badge && (
                       <span
                         className={`text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 ${
                           isActive
@@ -1205,41 +1292,47 @@ export const AdminView: React.FC<Props> = ({
                         {tab.badge}
                       </span>
                     )}
+
+                    {sidebarCollapsed && tab.badge && (
+                      <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#BFA57D]" />
+                    )}
                   </button>
                 );
               })}
             </div>
           </nav>
 
-          {/* Quick Salon System Info in Sidebar */}
-          <div className="hidden lg:block bg-[#161616] border border-[#262420] rounded-sm p-4 space-y-2.5 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase font-semibold text-[#8C8273] tracking-wider">
-                Salon System
-              </span>
-              <span className="text-emerald-400 font-mono text-[10px] flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Online
-              </span>
-            </div>
-            <div className="text-[11px] text-[#D9D1C5]">
-              14 St John Street, Bromsgrove
-            </div>
-            <div className="pt-2 border-t border-[#242424] grid grid-cols-2 gap-2 text-[10px] text-[#8C8273]">
-              <div>
-                <span className="block text-[#D9D1C5] font-semibold">{staff.length}</span>
-                <span>Stylists</span>
+          {/* Quick Salon System Info in Sidebar (shown only when expanded) */}
+          {!sidebarCollapsed && (
+            <div className="hidden lg:block bg-[#161616] border border-[#262420] rounded-sm p-4 space-y-2.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-semibold text-[#8C8273] tracking-wider">
+                  Salon System
+                </span>
+                <span className="text-emerald-400 font-mono text-[10px] flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Online
+                </span>
               </div>
-              <div>
-                <span className="block text-[#D9D1C5] font-semibold">{services.length}</span>
-                <span>Treatments</span>
+              <div className="text-[11px] text-[#D9D1C5]">
+                14 St John Street, Bromsgrove
+              </div>
+              <div className="pt-2 border-t border-[#242424] grid grid-cols-2 gap-2 text-[10px] text-[#8C8273]">
+                <div>
+                  <span className="block text-[#D9D1C5] font-semibold">{staff.length}</span>
+                  <span>Stylists</span>
+                </div>
+                <div>
+                  <span className="block text-[#D9D1C5] font-semibold">{services.length}</span>
+                  <span>Treatments</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </aside>
 
         {/* Right Column: Active Content Panel */}
-        <main className="lg:col-span-9 xl:col-span-9 min-w-0 space-y-6">
+        <main className="flex-1 min-w-0 w-full space-y-6 transition-all duration-300">
 
       {/* TAB 1: OPERATIONAL OVERVIEW */}
       {activeTab === 'overview' && overview && (
@@ -1555,14 +1648,14 @@ export const AdminView: React.FC<Props> = ({
             <table className="w-full text-left text-xs text-[#D9D1C5]">
               <thead className="bg-[#151515] text-[10px] uppercase text-[#8C8273] border-b border-[#262626]">
                 <tr>
-                  <th className="p-3.5">Ref</th>
-                  <th className="p-3.5">Date & Time</th>
-                  <th className="p-3.5">Client & Phone</th>
-                  <th className="p-3.5">Service Snapshot</th>
-                  <th className="p-3.5">Stylist</th>
-                  <th className="p-3.5">Status</th>
-                  <th className="p-3.5">Internal Notes</th>
-                  <th className="p-3.5 text-right">Actions</th>
+                  <th className={compactDensity ? 'py-2 px-3' : 'p-3.5'}>Ref</th>
+                  <th className={compactDensity ? 'py-2 px-3' : 'p-3.5'}>Date & Time</th>
+                  <th className={compactDensity ? 'py-2 px-3' : 'p-3.5'}>Client & Phone</th>
+                  <th className={compactDensity ? 'py-2 px-3' : 'p-3.5'}>Service Snapshot</th>
+                  <th className={compactDensity ? 'py-2 px-3' : 'p-3.5'}>Stylist</th>
+                  <th className={compactDensity ? 'py-2 px-3' : 'p-3.5'}>Status</th>
+                  <th className={compactDensity ? 'py-2 px-3' : 'p-3.5'}>Internal Notes</th>
+                  <th className={`${compactDensity ? 'py-2 px-3' : 'p-3.5'} text-right`}>Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#222]">
@@ -1574,26 +1667,26 @@ export const AdminView: React.FC<Props> = ({
                   </tr>
                 ) : (
                   appointments.map((a) => (
-                    <tr key={a.id} className="hover:bg-[#1A1A1A]">
-                      <td className="p-3.5 font-mono-numbers text-[#BFA57D] font-medium">
+                    <tr key={a.id} className="hover:bg-[#1A1A1A] transition-colors">
+                      <td className={`${compactDensity ? 'py-2 px-3' : 'p-3.5'} font-mono-numbers text-[#BFA57D] font-medium`}>
                         {a.booking_reference}
                       </td>
-                      <td className="p-3.5 font-mono-numbers">
+                      <td className={`${compactDensity ? 'py-2 px-3' : 'p-3.5'} font-mono-numbers`}>
                         <div className="text-[#F5F1EA]">{a.london_date}</div>
                         <div className="text-[11px] text-[#8C8273]">{a.london_time}</div>
                       </td>
-                      <td className="p-3.5">
+                      <td className={`${compactDensity ? 'py-2 px-3' : 'p-3.5'}`}>
                         <div className="font-semibold text-[#F5F1EA]">{a.customer_name}</div>
                         <div className="text-[11px] text-[#8C8273] font-mono-numbers">{a.customer_phone}</div>
                       </td>
-                      <td className="p-3.5">
+                      <td className={`${compactDensity ? 'py-2 px-3' : 'p-3.5'}`}>
                         <div>{a.booked_service_name}</div>
                         <div className="text-[11px] text-[#8C8273] font-mono-numbers">
                           {a.booked_duration_minutes}m · £{Number(a.booked_price).toFixed(2)}
                         </div>
                       </td>
-                      <td className="p-3.5 text-[#D9D1C5]">{a.staff_name}</td>
-                      <td className="p-3.5">
+                      <td className={`${compactDensity ? 'py-2 px-3' : 'p-3.5'} text-[#D9D1C5]`}>{a.staff_name}</td>
+                      <td className={`${compactDensity ? 'py-2 px-3' : 'p-3.5'}`}>
                         <select
                           value={a.status}
                           onChange={(e) => {
@@ -1624,7 +1717,7 @@ export const AdminView: React.FC<Props> = ({
                           <option value="no_show">no_show</option>
                         </select>
                       </td>
-                      <td className="p-3.5 min-w-[220px]">
+                      <td className={`${compactDensity ? 'py-2 px-3' : 'p-3.5'} min-w-[220px]`}>
                         {editingNoteApptId === a.id ? (
                           <div className="space-y-2 p-2.5 bg-[#141414] border border-[#9B8058] rounded-sm shadow-xl">
                             <div className="flex items-center justify-between">

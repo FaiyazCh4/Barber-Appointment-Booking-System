@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Menu, X, Sun, Moon } from 'lucide-react';
 import type { UserProfile } from '../types';
 import { SalonLogo } from './SalonLogo';
 
@@ -13,6 +13,42 @@ interface Props {
 
 export const Header: React.FC<Props> = ({ currentView, onNavigate }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  useEffect(() => {
+    try {
+      const savedTheme = localStorage.getItem('gd_theme');
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        setTheme(savedTheme);
+        if (savedTheme === 'light') {
+          document.documentElement.classList.add('light-theme');
+          document.body.classList.add('light-theme');
+        } else {
+          document.documentElement.classList.remove('light-theme');
+          document.body.classList.remove('light-theme');
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    try {
+      localStorage.setItem('gd_theme', nextTheme);
+      if (nextTheme === 'light') {
+        document.documentElement.classList.add('light-theme');
+        document.body.classList.add('light-theme');
+      } else {
+        document.documentElement.classList.remove('light-theme');
+        document.body.classList.remove('light-theme');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const navLinks = [
     { id: 'services', label: 'Services' },
@@ -61,11 +97,11 @@ export const Header: React.FC<Props> = ({ currentView, onNavigate }) => {
           ))}
         </nav>
 
-        {/* Zone 3: 1-2 primary actions */}
-        <div className="hidden sm:flex items-center gap-2 xl:gap-3 shrink-0">
+        {/* Zone 3: Actions + Single Toggle Button (Placed at the end, not between logo and Manage Booking) */}
+        <div className="flex items-center gap-2 xl:gap-3 shrink-0">
           <button
             onClick={() => handleNavClick('manage')}
-            className={`whitespace-nowrap text-xs uppercase tracking-wider font-medium px-2.5 xl:px-3 py-2 transition-colors cursor-pointer ${
+            className={`hidden sm:inline-flex whitespace-nowrap text-xs uppercase tracking-wider font-medium px-2.5 xl:px-3 py-2 transition-colors cursor-pointer ${
               currentView === 'manage' ? 'text-[#F5F1EA]' : 'text-[#D9D1C5] hover:text-[#F5F1EA]'
             }`}
           >
@@ -74,24 +110,45 @@ export const Header: React.FC<Props> = ({ currentView, onNavigate }) => {
 
           <button
             onClick={() => handleNavClick('book')}
-            className="whitespace-nowrap bg-[#9B8058] hover:bg-[#856C47] text-[#141414] font-semibold text-xs uppercase tracking-wider px-3.5 xl:px-5 py-2.5 rounded-sm transition-all shadow-sm active:translate-y-px cursor-pointer"
+            className="hidden sm:inline-flex whitespace-nowrap bg-[#9B8058] hover:bg-[#856C47] text-[#141414] font-semibold text-xs uppercase tracking-wider px-3.5 xl:px-5 py-2.5 rounded-sm transition-all shadow-sm active:translate-y-px cursor-pointer"
           >
             Book Appointment
           </button>
-        </div>
 
-        {/* Mobile menu trigger */}
-        <div className="flex items-center gap-2 lg:hidden">
           <button
             onClick={() => handleNavClick('book')}
             className="sm:hidden bg-[#9B8058] text-[#141414] font-semibold text-[11px] uppercase tracking-wider px-3 py-1.5 rounded-sm"
           >
             Book
           </button>
+
+          {/* The Single Toggle Button on the right */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-[#3E382E] bg-[#1A1916] hover:border-[#9B8058] transition-all cursor-pointer shadow-sm group"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            aria-label="Toggle dark/light theme"
+          >
+            <div className={`w-8 h-4 rounded-full p-0.5 transition-colors flex items-center ${theme === 'dark' ? 'bg-[#2A241C]' : 'bg-[#9B8058]'}`}>
+              <div className={`w-3 h-3 rounded-full bg-[#FAF7F2] shadow-sm flex items-center justify-center transform transition-transform duration-200 ${theme === 'dark' ? 'translate-x-0' : 'translate-x-4'}`}>
+                {theme === 'dark' ? (
+                  <Moon className="w-2 h-2 text-[#141414]" />
+                ) : (
+                  <Sun className="w-2 h-2 text-[#9B8058]" />
+                )}
+              </div>
+            </div>
+            <span className="text-[11px] uppercase tracking-wider font-semibold text-[#D9D1C5] group-hover:text-white hidden xl:inline">
+              {theme === 'dark' ? 'Dark' : 'Light'}
+            </span>
+          </button>
+
+          {/* Mobile menu trigger */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle navigation menu"
-            className="p-2 text-[#D9D1C5] hover:text-[#F5F1EA] focus:outline-none"
+            className="lg:hidden p-2 text-[#D9D1C5] hover:text-[#F5F1EA] focus:outline-none cursor-pointer"
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -122,6 +179,19 @@ export const Header: React.FC<Props> = ({ currentView, onNavigate }) => {
               className="w-full text-left py-2 text-sm text-[#A69B8D] whitespace-nowrap"
             >
               Salon Policies & Patch Testing
+            </button>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="w-full flex items-center justify-between py-2 text-sm text-[#D9D1C5] border-t border-[#2B2925] pt-3 cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                {theme === 'dark' ? <Moon className="w-4 h-4 text-[#BFA57D]" /> : <Sun className="w-4 h-4 text-[#9B8058]" />}
+                <span>Theme / Appearance</span>
+              </span>
+              <span className="text-xs px-2.5 py-1 rounded-full bg-[#24211D] border border-[#3E382E] text-[#BFA57D] font-mono font-semibold">
+                {theme === 'dark' ? 'Dark Noir' : 'Light Atelier'}
+              </span>
             </button>
             <button
               onClick={() => handleNavClick('book')}
