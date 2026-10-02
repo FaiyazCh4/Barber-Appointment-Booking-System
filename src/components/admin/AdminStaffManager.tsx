@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Users,
   Plus,
@@ -11,6 +11,10 @@ import {
   X,
   Sparkles,
   Shield,
+  Camera,
+  Upload,
+  RefreshCw,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { authFetch } from '../../api/client';
 import type { Service } from '../../types';
@@ -41,6 +45,18 @@ export const AdminStaffManager: React.FC<Props> = ({ services, onRefreshGlobalDa
   const [formWorkingDays, setFormWorkingDays] = useState<number[]>([2, 3, 4, 5, 6]); // Tue-Sat default
   const [formSubmitting, setFormSubmitting] = useState<boolean>(false);
   const [formError, setFormError] = useState<string>('');
+
+  // Image Upload State
+  const [uploadingImage, setUploadingImage] = useState<boolean>(false);
+  const [uploadSuccess, setUploadSuccess] = useState<boolean>(false);
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+  const [showUrlInput, setShowUrlInput] = useState<boolean>(false);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [quickUploadingStaffId, setQuickUploadingStaffId] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const quickUploadInputRef = useRef<HTMLInputElement>(null);
+  const targetQuickStaffId = useRef<string | null>(null);
 
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -75,6 +91,9 @@ export const AdminStaffManager: React.FC<Props> = ({ services, onRefreshGlobalDa
     setFormServiceIds(services.map((s) => s.id)); // Assign to all by default
     setFormWorkingDays([2, 3, 4, 5, 6]); // Tuesday through Saturday
     setFormError('');
+    setImageUploadError(null);
+    setUploadSuccess(false);
+    setShowUrlInput(false);
     setIsModalOpen(true);
   };
 
@@ -92,7 +111,121 @@ export const AdminStaffManager: React.FC<Props> = ({ services, onRefreshGlobalDa
       st.working_hours ? st.working_hours.filter((h: any) => h.is_working).map((h: any) => h.day_of_week) : [2, 3, 4, 5, 6]
     );
     setFormError('');
+    setImageUploadError(null);
+    setUploadSuccess(false);
+    setShowUrlInput(false);
     setIsModalOpen(true);
+  };
+
+  const processAndUploadFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setImageUploadError('Please select a valid image file (JPEG, PNG, WebP).');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setImageUploadError('Image size exceeds 10MB limit. Please choose a smaller photo.');
+      return;
+    }
+
+    setImageUploadError(null);
+    setUploadingImage(true);
+    setUploadSuccess(false);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const dataUrl = event.target?.result as string;
+        if (!dataUrl) {
+          setImageUploadError('Failed to read image file.');
+          setUploadingImage(false);
+          return;
+        }
+
+        const res = await authFetch('/api/admin/staff/upload-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image: dataUrl,
+            fileName: file.name,
+            staffId: editingStaffId || undefined,
+          }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Failed to upload photo');
+        }
+
+        const data = await res.json();
+        setFormImageUrl(data.imageUrl);
+        setUploadSuccess(true);
+        setTimeout(() => setUploadSuccess(false), 3000);
+      };
+
+      reader.onerror = () => {
+        setImageUploadError('Error reading file from disk.');
+        setUploadingImage(false);
+      };
+
+      reader.readAsDataURL(file);
+    } catch (err: any) {
+      console.error('Image upload failed:', err);
+      setImageUploadError(err.message || 'Image upload failed.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleQuickPhotoSelect = (st: any) => {
+    targetQuickStaffId.current = st.id;
+    quickUploadInputRef.current?.click();
+  };
+
+  const handleQuickFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const staffId = targetQuickStaffId.current;
+    if (!file || !staffId) return;
+
+    if (!file.type.startsWith('image/')) {
+      setNotification({ type: 'error', text: 'Please select a valid image file (JPEG, PNG, WebP).' });
+      return;
+    }
+
+    setQuickUploadingStaffId(staffId);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const dataUrl = event.target?.result as string;
+        const res = await authFetch('/api/admin/staff/upload-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image: dataUrl,
+            fileName: file.name,
+            staffId,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setNotification({ type: 'success', text: 'Stylist profile photo updated successfully.' });
+          setStaffList((prev) =>
+            prev.map((s) => (s.id === staffId ? { ...s, image_url: data.imageUrl } : s))
+          );
+          onRefreshGlobalData();
+        } else {
+          const err = await res.json().catch(() => ({}));
+          setNotification({ type: 'error', text: err.error || 'Failed to update photo' });
+        }
+        setQuickUploadingStaffId(null);
+      };
+      reader.readAsDataURL(file);
+    } catch (err: any) {
+      setNotification({ type: 'error', text: err.message || 'Upload failed' });
+      setQuickUploadingStaffId(null);
+    } finally {
+      if (quickUploadInputRef.current) quickUploadInputRef.current.value = '';
+    }
   };
 
   const handleSaveStaff = async (e: React.FormEvent) => {
@@ -279,12 +412,28 @@ export const AdminStaffManager: React.FC<Props> = ({ services, onRefreshGlobalDa
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-[#24211D] border border-[#3E382E] flex items-center justify-center font-serif-heading text-xl text-[#F5F1EA] overflow-hidden shrink-0">
+                  <div className="relative group w-14 h-14 rounded-full bg-[#24211D] border-2 border-[#3E382E] group-hover:border-[#9B8058] flex items-center justify-center font-serif-heading text-xl text-[#F5F1EA] overflow-hidden shrink-0 shadow-md">
                     {st.image_url ? (
                       <img src={st.image_url} alt={st.name} className="w-full h-full object-cover" />
                     ) : (
                       st.name.charAt(0)
                     )}
+                    <button
+                      type="button"
+                      onClick={() => handleQuickPhotoSelect(st)}
+                      disabled={quickUploadingStaffId === st.id}
+                      className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-[10px] text-white transition-opacity cursor-pointer p-1"
+                      title="Upload new profile photo"
+                    >
+                      {quickUploadingStaffId === st.id ? (
+                        <RefreshCw className="w-4 h-4 animate-spin text-[#9B8058]" />
+                      ) : (
+                        <>
+                          <Camera className="w-4 h-4 text-[#BFA57D]" />
+                          <span className="text-[9px] mt-0.5 font-medium leading-none">Photo</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                   <div>
                     <h4 className="font-serif-heading text-xl text-[#F5F1EA]">{st.name}</h4>
@@ -413,15 +562,142 @@ export const AdminStaffManager: React.FC<Props> = ({ services, onRefreshGlobalDa
                   />
                 </div>
 
-                <div className="space-y-1 sm:col-span-2">
-                  <label className="text-xs text-[#D9D1C5] font-medium">Profile Image URL</label>
-                  <input
-                    type="url"
-                    placeholder="https://images.unsplash.com/..."
-                    value={formImageUrl}
-                    onChange={(e) => setFormImageUrl(e.target.value)}
-                    className="w-full bg-[#141414] border border-[#2B2925] px-3 py-2 text-xs text-[#F5F1EA] rounded-sm focus:outline-none focus:border-[#9B8058]"
-                  />
+                {/* Stylist Profile Photo Uploader */}
+                <div className="space-y-2 sm:col-span-2 bg-[#141414] border border-[#2B2925] p-4 rounded-sm">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-[#D9D1C5] font-medium flex items-center gap-1.5">
+                      <Camera className="w-3.5 h-3.5 text-[#9B8058]" />
+                      <span>Stylist Profile Photo</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowUrlInput(!showUrlInput)}
+                      className="text-[11px] text-[#BFA57D] hover:underline cursor-pointer"
+                    >
+                      {showUrlInput ? 'Switch to File Upload' : 'Or enter Image URL'}
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center gap-4 pt-1">
+                    {/* Live Stylist Avatar Preview */}
+                    <div className="relative group shrink-0">
+                      <div className="w-20 h-20 rounded-full bg-[#1F1C18] border-2 border-[#9B8058]/60 flex items-center justify-center font-serif-heading text-2xl text-[#F5F1EA] overflow-hidden shadow-md">
+                        {formImageUrl ? (
+                          <img
+                            src={formImageUrl}
+                            alt={formName || 'Stylist'}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span>{formName ? formName.charAt(0).toUpperCase() : '?'}</span>
+                        )}
+                      </div>
+                      {uploadingImage && (
+                        <div className="absolute inset-0 rounded-full bg-black/75 flex items-center justify-center">
+                          <RefreshCw className="w-5 h-5 text-[#9B8058] animate-spin" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Uploader Controls */}
+                    <div className="flex-1 w-full space-y-2">
+                      {!showUrlInput ? (
+                        <div
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            setIsDragging(true);
+                          }}
+                          onDragLeave={() => setIsDragging(false)}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setIsDragging(false);
+                            if (e.dataTransfer.files?.[0]) {
+                              processAndUploadFile(e.dataTransfer.files[0]);
+                            }
+                          }}
+                          className={`border-2 border-dashed rounded-sm p-3.5 text-center transition-colors ${
+                            isDragging
+                              ? 'border-[#9B8058] bg-[#9B8058]/10'
+                              : 'border-[#332E27] hover:border-[#9B8058]/50 bg-[#121110]'
+                          }`}
+                        >
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/png, image/jpeg, image/jpg, image/webp"
+                            onChange={(e) => {
+                              if (e.target.files?.[0]) processAndUploadFile(e.target.files[0]);
+                            }}
+                            className="hidden"
+                          />
+
+                          <div className="flex flex-col items-center gap-1.5">
+                            <button
+                              type="button"
+                              disabled={uploadingImage}
+                              onClick={() => fileInputRef.current?.click()}
+                              className="bg-[#24211D] hover:bg-[#322D27] text-[#F5F1EA] border border-[#3E382E] hover:border-[#9B8058] px-4 py-2 rounded-sm text-xs font-medium flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              {uploadingImage ? (
+                                <>
+                                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#9B8058]" />
+                                  <span>Uploading Photo...</span>
+                                </>
+                              ) : uploadSuccess ? (
+                                <>
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                                  <span className="text-emerald-300">Photo Uploaded!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Upload className="w-3.5 h-3.5 text-[#BFA57D]" />
+                                  <span>Browse Device / Upload Photo</span>
+                                </>
+                              )}
+                            </button>
+                            <span className="text-[10px] text-[#8C8273]">
+                              PNG, JPG, or WebP up to 10MB. Or drag and drop file here.
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <input
+                            type="url"
+                            placeholder="https://images.unsplash.com/... or /uploads/stylists/..."
+                            value={formImageUrl}
+                            onChange={(e) => setFormImageUrl(e.target.value)}
+                            className="w-full bg-[#121110] border border-[#2B2925] px-3 py-2 text-xs text-[#F5F1EA] rounded-sm focus:outline-none focus:border-[#9B8058]"
+                          />
+                          <span className="text-[10px] text-[#8C8273] block">
+                            Direct web image URL or path.
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Photo status & remove option */}
+                      {formImageUrl && (
+                        <div className="flex items-center justify-between text-[11px] pt-1 text-[#8C8273]">
+                          <span className="truncate max-w-[240px] font-mono text-[10px] text-[#A69B8D]">
+                            {formImageUrl.startsWith('/uploads') ? 'Stored on salon server' : formImageUrl}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setFormImageUrl('')}
+                            className="text-red-400 hover:text-red-300 hover:underline cursor-pointer"
+                          >
+                            Remove Photo
+                          </button>
+                        </div>
+                      )}
+
+                      {imageUploadError && (
+                        <div className="p-2 bg-red-950/70 border border-red-800 text-[11px] text-red-200 rounded-sm">
+                          {imageUploadError}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-1 sm:col-span-2">
@@ -586,6 +862,15 @@ export const AdminStaffManager: React.FC<Props> = ({ services, onRefreshGlobalDa
           </div>
         </div>
       )}
+
+      {/* Hidden file input for quick photo updates on staff cards */}
+      <input
+        ref={quickUploadInputRef}
+        type="file"
+        accept="image/png, image/jpeg, image/jpg, image/webp"
+        onChange={handleQuickFileChange}
+        className="hidden"
+      />
     </div>
   );
 };

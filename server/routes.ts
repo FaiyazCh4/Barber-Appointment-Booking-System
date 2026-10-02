@@ -1,4 +1,6 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import bcrypt from 'bcryptjs';
 import { Router } from 'express';
 import { authMiddleware, generateToken, requireAuth, requireRole, type AuthenticatedRequest } from './auth.js';
@@ -2133,6 +2135,85 @@ apiRouter.delete('/admin/staff/:id', requireAdmin, async (req: AuthenticatedRequ
     res.json({ success: true, message: 'Stylist removed successfully' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Stylist Profile Image Upload Endpoint
+apiRouter.post('/admin/staff/upload-image', requireAdmin, async (req: AuthenticatedRequest, res) => {
+  try {
+    const { image, fileName, staffId } = req.body;
+    if (!image || typeof image !== 'string') {
+      return res.status(400).json({ error: 'Image data is required' });
+    }
+
+    let imageUrl = image;
+
+    // Check if it is a base64 Data URL
+    const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (matches && matches.length === 3) {
+      const mimeType = matches[1].toLowerCase();
+      const base64Data = matches[2];
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      if (buffer.length > 10 * 1024 * 1024) {
+        return res.status(400).json({ error: 'Image file size exceeds maximum limit of 10MB' });
+      }
+
+      let ext = 'jpg';
+      if (mimeType.includes('png')) ext = 'png';
+      else if (mimeType.includes('webp')) ext = 'webp';
+      else if (mimeType.includes('gif')) ext = 'gif';
+      else if (mimeType.includes('jpeg') || mimeType.includes('jpg')) ext = 'jpg';
+      else {
+        return res.status(400).json({ error: 'Unsupported format. Please upload JPEG, PNG, or WebP.' });
+      }
+
+      const safeSlug = (staffId || 'stylist').replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
+      const uniqueFileName = `${safeSlug}_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.${ext}`;
+
+      // Save into both public/uploads/stylists and dist/uploads/stylists if dist exists
+      const uploadDirPath = path.resolve(process.cwd(), 'public', 'uploads', 'stylists');
+      if (!fs.existsSync(uploadDirPath)) {
+        fs.mkdirSync(uploadDirPath, { recursive: true });
+      }
+      const filePath = path.join(uploadDirPath, uniqueFileName);
+      fs.writeFileSync(filePath, buffer);
+
+      // If dist folder exists, copy there too so production build can immediately serve it
+      const distUploadPath = path.resolve(process.cwd(), 'dist', 'uploads', 'stylists');
+      if (fs.existsSync(path.resolve(process.cwd(), 'dist'))) {
+        if (!fs.existsSync(distUploadPath)) {
+          fs.mkdirSync(distUploadPath, { recursive: true });
+        }
+        fs.writeFileSync(path.join(distUploadPath, uniqueFileName), buffer);
+      }
+
+      imageUrl = `/uploads/stylists/${uniqueFileName}`;
+    }
+
+    // If a staffId is specified, directly update staff in database
+    if (staffId) {
+      const db = await getDb();
+      await runWithLock(() => {
+        db.run('UPDATE staff SET image_url = ? WHERE id = ?', [imageUrl, staffId]);
+        db.run(
+          `INSERT INTO audit_logs (id, user_email, action, entity_type, entity_id, details, created_at)
+           VALUES (?, ?, 'STAFF_IMAGE_UPDATED', 'staff', ?, ?, ?)`,
+          [
+            `audit_${crypto.randomUUID()}`,
+            req.user?.email || 'admin',
+            staffId,
+            `Updated profile image for stylist ${staffId}`,
+            new Date().toISOString(),
+          ]
+        );
+      });
+    }
+
+    res.json({ success: true, imageUrl });
+  } catch (err: any) {
+    console.error('Error handling stylist image upload:', err);
+    res.status(500).json({ error: err.message || 'Failed to upload stylist profile image' });
   }
 });
 

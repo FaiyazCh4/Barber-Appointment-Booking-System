@@ -32,6 +32,8 @@ import {
   Sparkles,
   FileText,
   X,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import {
   loginUser,
@@ -68,6 +70,7 @@ export const AdminView: React.FC<Props> = ({
 }) => {
   // Tabs: appointments (default), overview, services, staff, hours, saloniq, notifications, audit, qatest, supabase
   const [activeTab, setActiveTab] = useState<string>('appointments');
+  const [sidebarExpandedMobile, setSidebarExpandedMobile] = useState<boolean>(false);
 
   // Single Slot & Auth Mode State
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
@@ -1042,7 +1045,7 @@ export const AdminView: React.FC<Props> = ({
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Top Banner & User Lockup */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#262626] pb-6">
         <div>
@@ -1106,38 +1109,137 @@ export const AdminView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Navigation Tabs */}
-      <div className="flex items-center gap-1 overflow-x-auto pb-2 border-b border-[#262626]">
-        {[
-          { id: 'appointments', label: 'All Bookings & Appointments', icon: Calendar },
-          { id: 'overview', label: 'Salon Overview', icon: Layers },
-          { id: 'services', label: 'Services Catalogue', icon: Scissors },
-          { id: 'staff', label: 'Stylists & Team', icon: Users },
-          { id: 'schedules', label: 'Schedules & Operating Hours', icon: Clock },
-          { id: 'saloniq', label: 'SalonIQ Migration', icon: FileSpreadsheet },
-          { id: 'notifications', label: 'Notification Outbox', icon: Mail },
-          { id: 'audit', label: 'Audit Trail', icon: History },
-          { id: 'qatest', label: 'QA Acceptance Tests', icon: Play },
-          { id: 'supabase', label: 'Supabase Backend', icon: Database },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-sm whitespace-nowrap transition-colors ${
-                isActive
-                  ? 'bg-[#9B8058] text-[#141414] font-bold'
-                  : 'bg-[#181818] text-[#D9D1C5] hover:text-white'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Main Admin Operations Layout: Vertical Sidebar on Left + Active Content Panel on Right */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+        {/* Left Column: Vertical Operations Hub Sidebar */}
+        <aside className="lg:col-span-3 xl:col-span-3 lg:sticky lg:top-6 space-y-4">
+          <nav aria-label="Salon Operations Hub" className="bg-[#181818] border border-[#2B2925] rounded-sm p-3.5 space-y-2 shadow-xl">
+            {/* Header / Mobile Toggle */}
+            <div className="flex items-center justify-between pb-2.5 border-b border-[#262626]">
+              <div>
+                <span className="text-[10px] uppercase tracking-wider text-[#8C8273] font-semibold block">
+                  Operations Navigation
+                </span>
+                <span className="text-xs font-serif-heading text-[#F5F1EA]">
+                  Operations Hub
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSidebarExpandedMobile(!sidebarExpandedMobile)}
+                className="lg:hidden p-1.5 text-[#BFA57D] hover:text-white bg-[#222] rounded-xs border border-[#333] flex items-center gap-1 text-[11px] cursor-pointer"
+              >
+                <span>{sidebarExpandedMobile ? 'Hide Menu' : 'Menu Options'}</span>
+                {sidebarExpandedMobile ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+
+            {/* Vertical Options List */}
+            <div className={`space-y-1 ${sidebarExpandedMobile ? 'block' : 'hidden lg:block'}`}>
+              {[
+                {
+                  id: 'appointments',
+                  label: 'Bookings & Appointments',
+                  icon: Calendar,
+                  badge: appointments.length > 0 ? String(appointments.length) : undefined,
+                },
+                { id: 'overview', label: 'Salon Overview', icon: Layers },
+                {
+                  id: 'services',
+                  label: 'Services Catalogue',
+                  icon: Scissors,
+                  badge: services.length > 0 ? String(services.length) : undefined,
+                },
+                {
+                  id: 'staff',
+                  label: 'Stylists & Team',
+                  icon: Users,
+                  badge: staff.length > 0 ? String(staff.length) : undefined,
+                },
+                {
+                  id: 'schedules',
+                  label: 'Schedules & Operating Hours',
+                  icon: Clock,
+                  badge: !config?.salon.hours_confirmed ? 'Draft' : undefined,
+                },
+                { id: 'saloniq', label: 'SalonIQ Migration', icon: FileSpreadsheet },
+                { id: 'notifications', label: 'Notification Outbox', icon: Mail },
+                { id: 'audit', label: 'Audit Trail', icon: History },
+                { id: 'qatest', label: 'QA Acceptance Tests', icon: Play },
+                { id: 'supabase', label: 'Supabase Backend', icon: Database },
+              ].map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setSidebarExpandedMobile(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 text-xs font-medium rounded-sm transition-all text-left cursor-pointer group ${
+                      isActive
+                        ? 'bg-[#9B8058] text-[#141414] font-bold shadow-xs'
+                        : 'text-[#D9D1C5] hover:text-white hover:bg-[#222]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 pr-1">
+                      <Icon
+                        className={`w-4 h-4 shrink-0 transition-transform ${
+                          isActive ? 'text-[#141414]' : 'text-[#BFA57D] group-hover:scale-110'
+                        }`}
+                      />
+                      <span className="truncate">{tab.label}</span>
+                    </div>
+
+                    {tab.badge && (
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 ${
+                          isActive
+                            ? 'bg-[#141414] text-[#F5F1EA]'
+                            : tab.badge === 'Draft'
+                            ? 'bg-amber-950 text-amber-300 border border-amber-800'
+                            : 'bg-[#24211D] text-[#BFA57D] border border-[#3A352D]'
+                        }`}
+                      >
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+
+          {/* Quick Salon System Info in Sidebar */}
+          <div className="hidden lg:block bg-[#161616] border border-[#262420] rounded-sm p-4 space-y-2.5 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase font-semibold text-[#8C8273] tracking-wider">
+                Salon System
+              </span>
+              <span className="text-emerald-400 font-mono text-[10px] flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Online
+              </span>
+            </div>
+            <div className="text-[11px] text-[#D9D1C5]">
+              14 St John Street, Bromsgrove
+            </div>
+            <div className="pt-2 border-t border-[#242424] grid grid-cols-2 gap-2 text-[10px] text-[#8C8273]">
+              <div>
+                <span className="block text-[#D9D1C5] font-semibold">{staff.length}</span>
+                <span>Stylists</span>
+              </div>
+              <div>
+                <span className="block text-[#D9D1C5] font-semibold">{services.length}</span>
+                <span>Treatments</span>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* Right Column: Active Content Panel */}
+        <main className="lg:col-span-9 xl:col-span-9 min-w-0 space-y-6">
 
       {/* TAB 1: OPERATIONAL OVERVIEW */}
       {activeTab === 'overview' && overview && (
@@ -2311,6 +2413,8 @@ export const AdminView: React.FC<Props> = ({
           </div>
         </div>
       )}
+        </main>
+      </div>
 
       {/* MANUAL BOOKING MODAL */}
       {showManualModal && (
